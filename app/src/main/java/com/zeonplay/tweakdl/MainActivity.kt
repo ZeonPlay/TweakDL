@@ -582,6 +582,19 @@ class MainActivity : Activity() {
         addCreditLink(credits, "yt-dlp · Unlicense", "https://github.com/yt-dlp/yt-dlp")
         addCreditLink(credits, "youtubedl-android · GPL-3.0", "https://github.com/yausername/youtubedl-android")
         addCreditLink(credits, "FFmpeg", "https://ffmpeg.org/")
+        addText(
+            credits,
+            "TweakDL didistribusikan di bawah GNU GPL v3, tanpa garansi. Buka teks lisensi lengkap dari tautan berikut.",
+            11f,
+            COLOR_MUTED,
+            false,
+            6
+        )
+        addCreditLink(
+            credits,
+            "Baca GNU GPL v3",
+            "https://github.com/ZeonPlay/TweakDL/blob/main/LICENSE"
+        )
         parent.addView(credits, sectionParams(14))
 
         val privacy = makePanel()
