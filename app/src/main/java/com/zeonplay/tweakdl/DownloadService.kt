@@ -31,6 +31,7 @@ class DownloadService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action ?: ACTION_DOWNLOAD
+        val updateChannel = intent?.getStringExtra(EXTRA_UPDATE_CHANNEL) ?: "stable"
 
         if (action == ACTION_STOP) {
             try {
@@ -65,7 +66,7 @@ class DownloadService : Service() {
                 YoutubeDL.getInstance().init(this)
                 FFmpeg.getInstance().init(this)
 
-                if (action == ACTION_UPDATE) updateEngine()
+                if (action == ACTION_UPDATE) updateEngine(updateChannel)
                 else runDownload(intent ?: throw IllegalArgumentException("Permintaan unduhan kosong."))
             } catch (_: YoutubeDL.CanceledException) {
                 notifyUi(ACTION_ERROR, "Unduhan dibatalkan.")
@@ -73,9 +74,14 @@ class DownloadService : Service() {
             } catch (error: Exception) {
                 val detail = (error.message ?: "Terjadi kesalahan saat memproses tautan.")
                     .replace('\n', ' ')
-                    .take(420)
-                notifyUi(ACTION_ERROR, detail)
-                updateNotification("Proses gagal", detail, 0, false)
+                    .take(360)
+                val message = if (detail.contains("HTTP Error 403", ignoreCase = true)) {
+                    detail + " | Situs menolak permintaan. Perbarui yt-dlp dari Pengaturan; bila masih gagal di YouTube, coba Nightly."
+                } else {
+                    detail
+                }
+                notifyUi(ACTION_ERROR, message)
+                updateNotification("Proses gagal", message, 0, false)
             } finally {
                 jobActive = false
                 stopForeground(STOP_FOREGROUND_REMOVE)
@@ -85,16 +91,23 @@ class DownloadService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun updateEngine() {
-        notifyUi(ACTION_PROGRESS, "Memeriksa versi stabil yt-dlp…", 0)
-        val result = YoutubeDL.getInstance().updateYoutubeDL(
-            this,
+    private fun updateEngine(channel: String) {
+        val isNightly = channel == "nightly"
+        val label = if (isNightly) "Nightly" else "Stable"
+        val updateSource = if (isNightly) {
+            YoutubeDL.UpdateChannel.NIGHTLY
+        } else {
             YoutubeDL.UpdateChannel.STABLE
-        )
+        }
+
+        notifyUi(ACTION_PROGRESS, "Memeriksa versi yt-dlp " + label + "…", 0)
+        val result = YoutubeDL.getInstance().updateYoutubeDL(this, updateSource)
         val version = YoutubeDL.versionName(this) ?: "versi terbaru"
         val message = when (result) {
-            YoutubeDL.UpdateStatus.ALREADY_UP_TO_DATE -> "yt-dlp sudah terbaru (" + version + ")."
-            else -> "Engine yt-dlp berhasil diperbarui (" + version + ")."
+            YoutubeDL.UpdateStatus.ALREADY_UP_TO_DATE ->
+                "yt-dlp " + label + " sudah terbaru (" + version + ")."
+            else ->
+                "Engine yt-dlp " + label + " berhasil diperbarui (" + version + ")."
         }
         notifyUi(ACTION_COMPLETE, message, 100)
         updateNotification("Engine siap", message, 100, false)
@@ -391,6 +404,7 @@ class DownloadService : Service() {
         const val EXTRA_THUMBNAIL = "thumbnail"
         const val EXTRA_MESSAGE = "message"
         const val EXTRA_PROGRESS = "progress"
+        const val EXTRA_UPDATE_CHANNEL = "update_channel"
 
         private const val CHANNEL_ID = "tweakdl_downloads"
         private const val NOTIFICATION_ID = 7401
