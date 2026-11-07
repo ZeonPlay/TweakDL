@@ -29,6 +29,7 @@ import android.widget.ScrollView
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
+import com.yausername.youtubedl_android.YoutubeDL
 
 class MainActivity : Activity() {
     private val preferences by lazy {
@@ -548,15 +549,32 @@ class MainActivity : Activity() {
         val engine = makePanel()
         addCaption(engine, "MESIN UNDUH")
         addText(engine, "yt-dlp", 18f, COLOR_TEXT, true, 4)
+        val installedVersion = YoutubeDL.getInstance().versionName(this)
+            ?: "Versi bawaan paket Android"
+        addText(engine, "Versi terpasang: " + installedVersion, 12f, COLOR_MUTED, true, 7)
         addText(
             engine,
-            "TweakDL memakai youtubedl-android 0.18.1. Perbarui engine untuk mendapatkan perbaikan extractor terbaru.",
+            "Perbarui Stable secara berkala agar extractor mengikuti perubahan situs. Gunakan Nightly bila unduhan masih gagal karena perubahan situs terbaru.",
             12f,
             COLOR_MUTED,
             false,
             14
         )
-        engine.addView(makeButton("Perbarui yt-dlp (stable)", true) { updateEngine() })
+        engine.addView(makeButton("Perbarui yt-dlp (Stable)", true) {
+            updateEngine("stable")
+        })
+        engine.addView(makeButton("Coba yt-dlp Nightly (Eksperimental)", false) {
+            AlertDialog.Builder(this)
+                .setTitle("Pakai yt-dlp Nightly?")
+                .setMessage(
+                    "Nightly berisi perbaikan lebih baru untuk masalah extractor, tetapi bisa membawa regresi. Kamu bisa kembali ke Stable kapan saja."
+                )
+                .setNegativeButton("Batal", null)
+                .setPositiveButton("Perbarui Nightly") { _, _ ->
+                    updateEngine("nightly")
+                }
+                .show()
+        })
         parent.addView(engine, sectionParams(14))
 
         val supported = makePanel()
@@ -856,17 +874,22 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun updateEngine() {
+    private fun updateEngine(channel: String = "stable") {
         if (isBusy) {
             Toast.makeText(this, "Tunggu proses yang sedang berjalan selesai.", Toast.LENGTH_SHORT).show()
             return
         }
         isBusy = true
         progressValue = 0
-        statusMessage = "Memeriksa dan memperbarui yt-dlp…"
+        statusMessage = if (channel == "nightly") {
+            "Memeriksa dan memperbarui yt-dlp Nightly…"
+        } else {
+            "Memeriksa dan memperbarui yt-dlp Stable…"
+        }
         updateProgressViews()
         val updateIntent = Intent(this, DownloadService::class.java).apply {
             action = DownloadService.ACTION_UPDATE
+            putExtra(DownloadService.EXTRA_UPDATE_CHANNEL, channel)
         }
         try {
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(updateIntent)
