@@ -66,7 +66,7 @@ class DownloadService : Service() {
                 FFmpeg.getInstance().init(this)
 
                 if (action == ACTION_UPDATE) updateEngine()
-                else runDownload(intent)
+                else runDownload(intent ?: throw IllegalArgumentException("Permintaan unduhan kosong."))
             } catch (_: YoutubeDL.CanceledException) {
                 notifyUi(ACTION_ERROR, "Unduhan dibatalkan.")
                 updateNotification("Unduhan dibatalkan", "Kamu menghentikan proses.", 0, false)
@@ -100,8 +100,8 @@ class DownloadService : Service() {
         updateNotification("Engine siap", message, 100, false)
     }
 
-    private fun runDownload(intent: Intent?) {
-        val url = intent?.getStringExtra(EXTRA_URL)?.trim().orEmpty()
+    private fun runDownload(intent: Intent) {
+        val url = intent.getStringExtra(EXTRA_URL)?.trim().orEmpty()
         if (url.isBlank()) throw IllegalArgumentException("Tautan kosong.")
 
         val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: "video"
